@@ -46,6 +46,14 @@ from evaluation_harness.helper_functions import (
 
 Trajectory = list[Union[Action, StateInfo]]
 
+#REVIEW[mandrade]: added alternative uzzy_match_provider
+# If OpenAI not available, use Google for fuzzy matching
+try:
+    from openai import API_KEY
+    fuzzy_match_provider = 'openai'
+except ImportError:
+    fuzzy_match_provider = 'google'
+
 
 @beartype
 class Evaluator(object):
@@ -194,7 +202,7 @@ class StringEvaluator(Evaluator):
     @staticmethod
     @beartype
     def fuzzy_match(ref: str, pred: str, intent: str) -> float:
-        return llm_fuzzy_match(pred, ref, intent)
+        return llm_fuzzy_match(pred, ref, intent, provider=fuzzy_match_provider)
 
     @staticmethod
     @beartype

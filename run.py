@@ -743,7 +743,7 @@ if __name__ == "__main__":
         prepare(args)
 
         ## FIXME @debug interactive
-        # os.environ['GOOGLE_API_KEY'] = 'AIzaSyAI0XvTWHzl2ckpwQWMRuHNuaYlS1zrcGs'    
+        # os.environ['GOOGLE_API_KEY'] = 'your_key'    
         # args.model='llama-3/8b-instruct'; args.provider='huggingface'
         # args.test_start_idx=0
         # args.test_end_idx=10

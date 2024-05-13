@@ -15,10 +15,19 @@ from browser_env.env_config import (
     SHOPPING,
     WIKIPEDIA,
 )
-from llms.providers.openai_utils import (
-    generate_from_openai_chat_completion,
+try:
+    from llms.providers.openai_utils import (
+        generate_from_openai_chat_completion,
+    )
+except ImportError:
+    print("OpenAI API not available")
+
+from llms.providers.google_utils import (
+    generate_from_google_completion,
+    wrap_system_prompt
 )
 
+google_fuzzy_match_model='models/gemini-1.5-pro-latest'
 
 class PseudoPage:
     def __init__(self, original_page: Page, url: str):
@@ -579,9 +588,10 @@ def gitlab_get_project_memeber_role(
 
 
 @beartype
-def llm_fuzzy_match(pred: str, reference: str, question: str) -> float:
+def llm_fuzzy_match(pred: str, reference: str, question: str, provider:str='openai') -> float:
     """Check whether the prediction matches the reference with GPT-4-turbo"""
-    messages: list[dict[str, Any]] = []
+
+
     # construct the question to ask
     message = "Help a teacher to grade the answer of a student given a question. Keep in mind that the student may use different phrasing or wording to answer the question. The goal is to evaluate whether the answer is semantically equivalent to the reference answer.\n"
     message += f"question: {question}\n"
@@ -589,19 +599,40 @@ def llm_fuzzy_match(pred: str, reference: str, question: str) -> float:
     message += "all the string 'N/A' that you see is a special sequence that means 'not achievable'\n"
     message += f"student answer: {pred}\n"
     message += "Conclude the judgement by 'correct', 'incorrect', or 'partially correct'. Only output one of these options, and nothing else."
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": message},
-    ]
 
-    response = generate_from_openai_chat_completion(
-        model="gpt-4-1106-preview",
-        messages=messages,
-        temperature=0,
-        max_tokens=768,
-        top_p=1.0,
-        context_length=0,
-    ).lower()
+    messages: list[dict[str, Any]] = []
+    
+    if provider=='openai':
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": message},
+        ]
+
+        response = generate_from_openai_chat_completion(
+            model="gpt-4-1106-preview",
+            messages=messages,
+            temperature=0,
+            max_tokens=768,
+            top_p=1.0,
+            context_length=0,
+        ).lower()
+
+    elif provider=='google':
+        messages=[{'role':'user', 'parts': wrap_system_prompt("You are a helpful assistant.", 
+                                                system_init="System Prompt:\n", system_end="", marker="***")}]
+
+        messages.append({'role':'model', 'parts': "Understood." })
+        messages.append({'role':'user', 'parts': message})
+        print(messages)
+        response = generate_from_google_completion(
+                            model=google_fuzzy_match_model,
+                            prompt=messages, 
+                            temperature=0.0,
+                            max_new_tokens=768,
+                            top_p=1.0,
+                            task_id=None,).lower()
+        
+
     print(response)
     if "partially correct" in response or "incorrect" in response:
         return 0.0
@@ -610,7 +641,7 @@ def llm_fuzzy_match(pred: str, reference: str, question: str) -> float:
         return 1.0
 
 
-def llm_ua_match(pred: str, reference: str, question: str) -> float:
+def llm_ua_match(pred: str, reference: str, question: str, provider:str='openai') -> float:
     """Check whether the prediction matches the reference with GPT-4-turbo"""
     messages: list[dict[str, Any]] = []
     # construct the question to ask
@@ -625,19 +656,39 @@ def llm_ua_match(pred: str, reference: str, question: str) -> float:
         "Determine if the reported reason aligns with the actual reason, even if implicitly. "
         "If the stated reason is in line with the actual reason, respond with 'same'. Otherwise, respond with 'different'."
     )
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": message},
-    ]
 
-    response = generate_from_openai_chat_completion(
-        model="gpt-4-1106-preview",
-        messages=messages,
-        temperature=0,
-        max_tokens=768,
-        top_p=1.0,
-        context_length=0,
-    ).lower()
+    if provider=='openai':
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": message},
+        ]
+
+        response = generate_from_openai_chat_completion(
+            model="gpt-4-1106-preview",
+            messages=messages,
+            temperature=0,
+            max_tokens=768,
+            top_p=1.0,
+            context_length=0,
+        ).lower()
+
+
+    elif provider=='google':
+        messages=[{'role':'user', 'parts': wrap_system_prompt("You are a helpful assistant.", 
+                                                system_init="System Prompt:\n", system_end="", marker="***")}]
+
+        messages.append({'role':'model', 'parts': "Understood." })
+        messages.append({'role':'user', 'parts': message})
+        response = generate_from_google_completion(
+                            model=google_fuzzy_match_model,
+                            prompt=messages, 
+                            temperature=0.0,
+                            max_new_tokens=768,
+                            top_p=1.0,
+                            task_id=None,).lower()
+        
+
+    print(response)
     if "different" in response:
         return 0.0
     else:

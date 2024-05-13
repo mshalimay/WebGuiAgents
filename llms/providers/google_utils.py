@@ -70,7 +70,8 @@ def generate_from_google_completion(
     stop_sequences: list[str] | None = None,
     conversation_file: str | None = None,
     task_id:int | None = None,
-    top_k:int | None=None
+    top_k:int | None=None,
+    model: str = None,
 ) -> str:
 
     # TODO: experiment with safety settings?
@@ -95,11 +96,21 @@ def generate_from_google_completion(
 
     gen_config = genai.types.GenerationConfig(**gen_kwargs)
 
-    response = google_model.generate_content(
-        prompt,
-        safety_settings=safety_config,
-        generation_config=gen_config,
-    )
+    if model is not None:
+        genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+        temp_model = genai.GenerativeModel(model)
+        response = temp_model.generate_content(
+            prompt,
+            safety_settings=safety_config,
+            generation_config=gen_config,
+        )
+        
+    else:
+        response = google_model.generate_content(
+            prompt,
+            safety_settings=safety_config,
+            generation_config=gen_config,
+        )
     answer = response.text
 
     # Save conversation to file

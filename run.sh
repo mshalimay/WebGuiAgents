@@ -30,8 +30,8 @@ get_flag() {
 #---------------------------------------------
 
 # Models
-# model=gemini-pro-1.0-vision; provider=google   
-model='llama-3/8b-instruct'; provider='huggingface'
+model=gemini-pro-1.0; provider=google   
+# model='llama-3/8b-instruct'; provider='huggingface'
 # model='llava-llama-3/8b-instruct'; provider='huggingface'
 vlm=$(get_flag 'vlm' false)   # if true, use visual language model / input
 
@@ -42,30 +42,30 @@ instruction='p_cot_id_actree_2s_no_na'      # p_cot_id_actree_2s_no_na, p_cot_id
 sys_prompt=$(get_flag 'sys_prompt' true)    # for GEMINI: if true, adds system prompt hint 
 
 # Generation                              
-temperature=0.6                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 for others (see VisualWebArena).
-top_p=0.9                                   # Default: 0.9 for GPT | 1.0 Gemini-Pro | 0.9 llama-3 | 0.95 for others (see VisualWebArena).
+temperature=0.9                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 for others (see VisualWebArena).
+top_p=1.0                                   # Default: 0.9 for GPT | 1.0 Gemini-Pro | 0.9 llama-3 | 0.95 for others (see VisualWebArena).
 max_tokens=500                              # Max tokens to generate. Default: 384.
 context_length=0                            # Used in open AI. Default: 0.
-top_k=0                                     # Used in gemini. Default: 0 (uses gemini default).
+top_k=40                                    # Used in gemini. Default: 0 (uses gemini default). Obs: gemini defaults to None, despite documentation saying default is 40.
 
 # Input size parameters 
-max_obs_length=3840   # In tokens. # Default: 3840 | 640 for models with small ctx | 15360 chars for Gemini-Pro 
+max_obs_length=15360                         # In tokens. # Default: 3840 | 640 for models with small ctx | 15360 chars for Gemini-Pro 
 current_viewport_only=$(get_flag 'current_viewport_only' true)   # Default: true
-viewport_width=1280    # Default: 1280  
-viewport_height=2000   # Default: 720 for small context window models | 2048 for large context window models
+viewport_width=1280                         # Default: 1280  
+viewport_height=1024                        # Default: 720 for small context window models | 2048 for large context window models
 
 # Tasks
-test_start_idx=0
-test_end_idx=25
-swap_tasks=$(get_flag 'swap_tasks' true) # if true, remove tasks requiring OpenAI
+test_start_idx=8
+test_end_idx=9
+swap_tasks=$(get_flag 'swap_tasks' false)   # if true, swap fuzzy_match tasks by the tasks immediately after them
 
 # Execution params
-deployment_mode='automodel'                 # 'tgi', 'automodel', 'vllm'
+deployment_mode='automodel'                 # For Hugging Face models; deploys with 'tgi', 'automodel', 'vllm'
 flash_attn=$(get_flag 'flash_attn' true)    # autmodel-only: if true, uses flash attention
-model_endpoint='-'                          # tgi-only: example: 'http://127.0.0.1:8080'
-local=$(get_flag 'local' true)              # tgi-only: if true, will deploy a local tgi server
-eager=$(get_flag 'eager' false)             # vllm engine only. Eager mode in Transformers. False uses less memory, but slower.
-max_model_len=7000                          # vllm engine only. If -1, use the default max model length for the model.
+model_endpoint='http://127.0.0.1:8080'      # tgi-only: example: 'http://127.0.0.1:8080'
+local=$(get_flag 'local' false)             # tgi-only: if true, will deploy a local tgi server
+eager=$(get_flag 'eager' false)             # vllm engine only. Eager mode in Transformers. True uses less memory, but slower.
+max_model_len=-1                            # vllm engine only. If -1, use the default max model length for the model.
 
 # Max steps, early stopping
 max_steps=30

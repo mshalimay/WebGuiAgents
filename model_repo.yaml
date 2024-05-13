@@ -97,6 +97,7 @@ models:
   gemini-pro-1.0:
     model_path: 'models/gemini-1.0-pro-latest'
     provider: 'google'
+    context_win: 32000
 
 
 # llava-llama-3 8b 
