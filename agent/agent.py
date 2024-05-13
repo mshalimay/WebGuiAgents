@@ -19,8 +19,8 @@ from browser_env.utils import Observation, StateInfo
 from llms import (
     call_llm,
     generate_from_huggingface_completion,
-    generate_from_openai_chat_completion,
-    generate_from_openai_completion,
+    # generate_from_openai_chat_completion,
+    # generate_from_openai_completion,
     lm_config,
 )
 from llms.tokenizers import Tokenizer
@@ -116,7 +116,7 @@ class PromptAgent(Agent):
         self.captioning_fn = captioning_fn
 
         # Check if the model is multimodal.
-        if ("gemini" in lm_config.model or "gpt-4" in lm_config.model and "vision" in lm_config.model) and type(prompt_constructor) == MultimodalCoTPromptConstructor:
+        if self.lm_config.vlm:
             self.multimodal_inputs = True
         else:
             self.multimodal_inputs = False
@@ -125,17 +125,19 @@ class PromptAgent(Agent):
         self.action_set_tag = tag
 
     @beartype
-    def next_action(
-        self, trajectory: Trajectory, intent: str, meta_data: dict[str, Any], images: Optional[list[Image.Image]] = None,
-        output_response: bool = False
-    ) -> Action:
+    def next_action(self, 
+        trajectory: Trajectory, intent: str, 
+        meta_data: dict[str, Any], task_id:int|None=None,
+        images: Optional[list[Image.Image]] = None,
+        output_response: bool = False)-> Action:
         # Create page screenshot image for multimodal models.
+        page_screenshot_img=None
         if self.multimodal_inputs:
             page_screenshot_arr = trajectory[-1]["observation"]["image"]
             page_screenshot_img = Image.fromarray(
                 page_screenshot_arr
             )  # size = (viewport_width, viewport_width)
-
+        
         # Caption the input image, if provided.
         if images is not None and len(images) > 0:
             if self.captioning_fn is not None:
@@ -154,18 +156,14 @@ class PromptAgent(Agent):
                     "WARNING: Input image provided but no image captioner available."
                 )
 
-        if self.multimodal_inputs:
-            prompt = self.prompt_constructor.construct(
-                trajectory, intent, page_screenshot_img, images, meta_data
-            )
-        else:
-            prompt = self.prompt_constructor.construct(
-                trajectory, intent, meta_data
-            )
+        prompt = self.prompt_constructor.construct(
+            trajectory=trajectory, intent=intent, page_screenshot_img=page_screenshot_img, 
+            images=images, meta_data=meta_data
+        )
         lm_config = self.lm_config
         n = 0
         while True:
-            response = call_llm(lm_config, prompt)
+            response =  call_llm(lm_config, prompt, task_id=task_id,)
             force_prefix = self.prompt_constructor.instruction[
                 "meta_data"
             ].get("force_prefix", "")
@@ -197,6 +195,9 @@ class PromptAgent(Agent):
 
         return action
 
+    def get_tokenizer(self):
+        return self.prompt_constructor.tokenizer
+    
     def reset(self, test_config_file: str) -> None:
         pass
 
@@ -210,7 +211,9 @@ def construct_agent(args: argparse.Namespace, captioning_fn=None) -> Agent:
     elif args.agent_type == "prompt":
         with open(args.instruction_path) as f:
             constructor_type = json.load(f)["meta_data"]["prompt_constructor"]
-        tokenizer = Tokenizer(args.provider, args.model)
+
+        tokenizer = Tokenizer(args.provider, args.tokenizer_path)
+
         prompt_constructor = eval(constructor_type)(
             args.instruction_path, lm_config=llm_config, tokenizer=tokenizer
         )

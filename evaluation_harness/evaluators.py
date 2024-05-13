@@ -236,12 +236,14 @@ class StringEvaluator(Evaluator):
                                     for value in value_or
                                 ]
                             )
+                #REVIEW: modified to allow more than one option as in url evaluator
                 case "must_include":
                     assert isinstance(value, list)
                     for must_value in value:
-                        value_or = must_value.split(" |OR| ")
-                        for v in value_or:
+                        must_value_or = must_value.split(" |OR| ")
+                        for v in must_value_or:
                             score *= self.must_include(ref=v, pred=pred)
+
                 case "must_exclude":
                     assert isinstance(value, list)
                     for must_excl_value in value:

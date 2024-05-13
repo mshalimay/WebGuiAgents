@@ -1,19 +1,15 @@
 import base64
 from dataclasses import dataclass
 from io import BytesIO
+import os
+import tempfile
 from typing import Any, Dict, TypedDict, Union
 
 import numpy as np
 import numpy.typing as npt
 from beartype import beartype
-from PIL import Image
-
-try:
-    from vertexai.preview.generative_models import Image as VertexImage
-except:
-    print('Google Cloud not set up, skipping import of vertexai.preview.generative_models.Image')
-
-
+from PIL import Image    
+from vertexai.preview.generative_models import Image as VertexImage
 @dataclass
 class DetachedPage:
     url: str
@@ -47,6 +43,18 @@ def pil_to_vertex(img: Image.Image) -> str:
         byte_data = image_buffer.getvalue()
         img_vertex = VertexImage.from_bytes(byte_data)
     return img_vertex
+
+
+def pil_to_google(img: Image.Image) -> Image.Image:
+    # This coerces the image types to PIL.PngImagePlugin.PngImageFile.
+    # Why: google/generativeai/types/content_types.py tests for PIL.PngImagePlugin.PngImageFile. 
+    # If not this specific (ex.: PIL.Image), it converts to JPEG, which gives error if RGBA format. 
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp:
+        img.save(temp.name, format="PNG")
+        temp.seek(0)
+        png_img = Image.open(temp.name)
+    os.remove(temp.name)  # Clean up the temporary file
+    return png_img, None
 
 
 class AccessibilityTreeNode(TypedDict):

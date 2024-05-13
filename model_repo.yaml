@@ -1,0 +1,109 @@
+general:
+  hf_models_location: "/home/mashalimay/.cache/huggingface/hub"
+  
+models:
+# Llama-2 7b
+  llama-2/7b:
+    model_path: "meta-llama/Llama-2-7b-hf"
+    tokenizer_path: "meta-llama/Llama-2-7b-hf"
+    quant: ""
+    content_len: 4096
+    provider: "huggingface"
+
+  llama-2/7b-chat:
+    model_path: "meta-llama/Llama-2-7b-chat-hf"
+    tokenizer_path: "meta-llama/Llama-2-7b-chat-hf"
+    quant: ""
+    context_win: 4096
+    provider: "huggingface"
+
+  llama-2/7b-32k-instruct:
+    model_path: "togethercomputer/Llama-2-7B-32K-Instruct"
+    tokenizer_path: "togethercomputer/Llama-2-7B-32K-Instruct"
+    quant: ""
+    context_win: 4096
+    provider: "huggingface"
+  
+# Llama-2 7b quantized
+  llama-2/7b-instruct-gptq:
+    model_path: "TheBloke/Llama-2-7B-32K-Instruct-GPTQ"
+    tokenizer_path: "TheBloke/Llama-2-7B-32K-Instruct-GPTQ"
+    quant: "gptq"
+    context_win: 4096
+    provider: "huggingface"
+  
+  llama-2/7b-chat-gptq:
+    model_path: "TheBloke/Llama-2-7b-Chat-GPTQ"
+    tokenizer_path: "TheBloke/Llama-2-7b-Chat-GPTQ"
+    quant: "gptq"
+    context_win: 4096
+    provider: "huggingface"
+
+# Llama-2 13b quantized
+  llama-2/13b-GPTQ:
+    model_path: "TheBloke/LLaMA2-13B-Tiefighter-GPTQ"
+    tokenizer_path: "TheBloke/Upstage-Llama-2-70B-instruct-v2-AWQ"
+    context_win: 4096
+    quant: "gptq"
+    provider: "huggingface"
+
+# Llama-3 8b 
+  llama-3/8b:
+    model_path: "meta-llama/Meta-Llama-3-8B"
+    tokenizer_path: "meta-llama/Meta-Llama-3-8B"
+    quant: ""
+    context_win: 8192
+    provider: "huggingface"
+    dytpe: 'bfloat16'
+  
+  llama-3/8b-instruct: 
+  # base gen config: https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct/blob/main/generation_config.json
+    model_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    tokenizer_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    quant: ""
+    context_win: 8192
+    provider: "huggingface"
+    dytpe: 'bfloat16'
+
+# codellama
+  codellama/7b-instruct:
+    model_path: "meta-llama/CodeLlama-7b-Instruct-hf"
+    tokenizer_path: "meta-llama/CodeLlama-7b-Instruct-hf"
+    quant: ""
+    context_win: 8192
+    provider: "huggingface"
+
+#falcon
+  falcon/7b:
+    model_path: "tiiuae/falcon-7b"
+    tokenizer_path: "tiiuae/falcon-7b"
+    quant: ""
+    context_win: 8192
+    provider: "huggingface"
+
+# gemini
+  gemini-pro-1.5:
+    model_path: 'models/gemini-1.5-pro-latest'
+    provider: 'google'
+  
+  gemini-pro-1.5-vision:
+    model_path: 'models/gemini-1.5-pro-latest'
+    provider: 'google'
+
+  gemini-pro-1.0-vision:
+    model_path: 'models/gemini-1.0-pro-vision-latest'
+    provider: 'google'
+
+  gemini-pro-1.0:
+    model_path: 'models/gemini-1.0-pro-latest'
+    provider: 'google'
+
+
+# llava-llama-3 8b 
+  llava-llama-3/8b-instruct:
+    # model_path: "xtuner/llava-llama-3-8b-v1_1-transformers"
+    # tokenizer_path: "xtuner/llava-llama-3-8b-v1_1-transformers"
+    model_path: /home/mashalimay/.cache/huggingface/hub/models--Intel--llava-llama-3-merged-8b
+    tokenizer_path: Intel/llava-llama-3-8b
+    quant: ""
+    provider: "huggingface"

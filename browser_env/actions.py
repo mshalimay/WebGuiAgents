@@ -1630,7 +1630,9 @@ def create_id_based_action(action_str: str) -> Action:
             return create_key_press_action(key_comb=key_comb)
         case "scroll":
             # up or down
-            match = re.search(r"scroll ?\[?(up|down)\]?", action_str)
+            # match = re.search(r"scroll ?\[?(up|down)\]?", action_str)
+            # REVIEW: Add possibility to emit `scroll [direction=up]` as instructed in prompts
+            match = re.search(r'scroll \[(?:direction=)?(up|down)\]', action_str)
             if not match:
                 raise ActionParsingError(f"Invalid scroll action {action_str}")
             direction = match.group(1)
@@ -1657,10 +1659,21 @@ def create_id_based_action(action_str: str) -> Action:
             return create_page_focus_action(page_number)
         case "close_tab":
             return create_page_close_action()
-        case "stop":  # stop answer
+        case "stop":  # stop answer 
+            # REVIEW problem with original: not invalid stop action.
+            # Emits VALID stop actions with NULL response for things like ```stop "Sprite Stasis Ball 65 cm"```
             match = re.search(r"stop ?\[(.+)\]", action_str)
             if not match:  # some tasks don't require an answer
                 answer = ""
+                match2 = re.search(r"stop ?(.+)", action_str)
+                if match2:
+                    substring = match2.group(1)
+                    # Remove all space-like characters
+                    substring = re.sub(r"\s+", "", substring)
+                    if len(substring)>0 and substring != "[]":
+                        raise ActionParsingError(
+                            f"Invalid stop action {action_str}"
+                        )
             else:
                 answer = match.group(1)
             return create_stop_action(answer)

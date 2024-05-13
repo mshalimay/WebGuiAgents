@@ -105,7 +105,7 @@ PREVIOUS ACTION: {previous_action}""",
 		"observation": "image_som",
 		"action_type": "som",
 		"keywords": ["url", "objective", "observation", "previous_action"],
-		"prompt_constructor": "MultimodalCoTPromptConstructor",
+		"prompt_constructor": "CoTPromptConstructor",
 		"answer_phrase": "In summary, the next action I will perform is",
 		"action_splitter": "```"
 	},

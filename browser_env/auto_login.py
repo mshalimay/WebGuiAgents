@@ -9,6 +9,8 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+# FIXME: workaround because CLASSIEDS is not being imported for some strange reason
+
 from browser_env.env_config import (
     ACCOUNTS,
     CLASSIFIEDS,
@@ -32,12 +34,12 @@ EXACT_MATCH = [True, True, True]
 KEYWORDS = ["", "Delete", "My listings"]
 
 # If you want to test WebArena tasks, uncomment the following lines to add the configs:
-# SITES.extend(["shopping_admin", "gitlab"])
-# URLS.extend([f"{SHOPPING_ADMIN}/dashboard", f"{GITLAB}/-/profile"])
-# EXACT_MATCH.extend([True, True])
-# KEYWORDS.extend(["Dashboard", ""])
-assert len(SITES) == len(URLS) == len(EXACT_MATCH) == len(KEYWORDS)
+SITES.extend(["shopping_admin", "gitlab"])
+URLS.extend([f"{SHOPPING_ADMIN}/dashboard", f"{GITLAB}/-/profile"])
+EXACT_MATCH.extend([True, True])
+KEYWORDS.extend(["Dashboard", ""])
 
+assert len(SITES) == len(URLS) == len(EXACT_MATCH) == len(KEYWORDS)
 def is_expired(
     storage_state: Path, url: str, keyword: str, url_exact: bool = True
 ) -> bool:
@@ -117,6 +119,9 @@ def renew_comb(comb: list[str], auth_folder: str = "./.auth") -> None:
 
     context_manager.__exit__()
 
+def get_site_comb_from_filepath(file_path: str) -> list[str]:
+    comb = os.path.basename(file_path).rsplit("_", 1)[0].split(".")
+    return comb
 
 def main(auth_folder: str = "./.auth") -> None:
     pairs = list(combinations(SITES, 2))
@@ -145,5 +150,20 @@ def main(auth_folder: str = "./.auth") -> None:
             assert not is_expired(Path(c_file), url, keyword, match), url
 
 
+# if __name__ == "__main__":
+#     main()
+
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--site_list", nargs="+", default=[])
+    parser.add_argument("--auth_folder", type=str, default="./.auth")
+    args = parser.parse_args()
+    if not args.site_list:
+        main()
+    else:
+        if "all" in args.site_list:
+            main(auth_folder=args.auth_folder)
+        else:
+            renew_comb(args.site_list, auth_folder=args.auth_folder)
