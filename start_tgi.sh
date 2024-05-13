@@ -11,4 +11,4 @@ hf_models_location=$(yq e ".hf_models.$model_name.hf_models_location" $yaml_file
 cd hf_models_location
 
 text-generation-launcher --model-id $hf_endpoint --quantize $quant --num-shard $num_shard \
-        --port 3000 --master-port 3000 --master-addr localhost
+        --port 8080 --master-port 8080 --master-addr localhost
