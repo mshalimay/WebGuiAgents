@@ -800,7 +800,7 @@ if __name__ == "__main__":
         prepare(args)
 
         ## FIXME @debug interactive
-        # os.environ['GOOGLE_API_KEY'] = 'AIzaSyCmqYPObitVV81ARC7_tofzArttNt63Y84'    
+        # os.environ['GOOGLE_API_KEY'] = '<key>'    
         # # args.model='llama-3/8b-instruct'; args.provider='huggingface'
         # args.model="gemini-pro-1.0"; args.provider="google"
         # args.test_start_idx=0

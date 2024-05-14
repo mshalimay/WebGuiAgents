@@ -1,5 +1,5 @@
 # google api key
-export GOOGLE_API_KEY="AIzaSyCmqYPObitVV81ARC7_tofzArttNt63Y84"
+export GOOGLE_API_KEY="<key>"
 
 # website urls for testing
 export CLASSIFIEDS="http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:9980"
