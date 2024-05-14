@@ -1631,7 +1631,7 @@ def create_id_based_action(action_str: str) -> Action:
         case "scroll":
             # up or down
             # match = re.search(r"scroll ?\[?(up|down)\]?", action_str)
-            # REVIEW: Add possibility to emit `scroll [direction=up]` as instructed in prompts
+            # REVIEW[mandrade]: Add possibility to emit `scroll [direction=up]` as instructed in prompts
             match = re.search(r'scroll \[(?:direction=)?(up|down)\]', action_str)
             if not match:
                 raise ActionParsingError(f"Invalid scroll action {action_str}")
@@ -1660,22 +1660,28 @@ def create_id_based_action(action_str: str) -> Action:
         case "close_tab":
             return create_page_close_action()
         case "stop":  # stop answer 
-            # REVIEW problem with original: not invalid stop action.
+            # REVIEW[mandrade] problem with original: not invalid stop action.
             # Emits VALID stop actions with NULL response for things like ```stop "Sprite Stasis Ball 65 cm"```
+
+            answer=""
+
+            # If stop action has an answer and is valid:
             match = re.search(r"stop ?\[(.+)\]", action_str)
-            if not match:  # some tasks don't require an answer
-                answer = ""
-                match2 = re.search(r"stop ?(.+)", action_str)
-                if match2:
-                    substring = match2.group(1)
-                    # Remove all space-like characters
-                    substring = re.sub(r"\s+", "", substring)
-                    if len(substring)>0 and substring != "[]":
-                        raise ActionParsingError(
-                            f"Invalid stop action {action_str}"
-                        )
-            else:
+            if match:  # some tasks don't require an answer
                 answer = match.group(1)
+                return create_stop_action(answer)
+
+            # If stop action doesnt has an answer
+
+            # Raise error for invalid stop actions like: stop "Sprite Stasis Ball 65 cm"
+            match2 = re.search(r"stop ?(.+)", action_str)
+            if match2:
+                substring = match2.group(1)
+                # Remove all space-like characters
+                substring = re.sub(r"\s+", "", substring)
+                if len(substring) > 0 and substring != "[]":
+                    # example: stop "Sprite Stasis Ball 65 cm"
+                    raise ActionParsingError(f"Invalid stop action {action_str}")            
             return create_stop_action(answer)
 
     raise ActionParsingError(f"Invalid action {action_str}")

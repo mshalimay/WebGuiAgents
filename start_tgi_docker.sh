@@ -10,21 +10,17 @@ hf_models_location=$(yq e ".general.hf_models_location" $yaml_file)
 
 # hf_endpoint="meta-llama/Meta-Llama-3-8B"
 # quant=""
-# hf_models_location="/home/mashalimay/.cache/huggingface/hub"
-
-echo $hf_endpoint
-echo $quant
-echo $hf_models_location
+# hf_models_location="/home/mashalimay/.cache/huggingface/hub"  <- this is the typicasl location where HF save the models
 
 max_input_tokens=1000
 max_total_tokens=1001 
 max_batch_total_tokens=$max_total_tokens
-max_batch_size=1        # important: set this to 1 because tgi will stress test. See tgi notes
+max_batch_size=1        # Important: set this to 1 because tgi will stress test and you can run out of GPU memory. See TGI notes.
 container_name="hf-tgi"
 num_cpus=4
 num_shards=1
 
-# Start the Docker container
+# Start the Docker container, mounting to the model repository
 docker run --rm --entrypoint /bin/bash -itd \
   --name $container_name \
   -v $hf_models_location:/data \
@@ -42,15 +38,14 @@ else
     exit 1
 fi
 
-docker exec $container_name python -c "import torch; print(f'Total GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**2:.2f} MiB'); print(f'Memory Allocated: {torch.cuda.memory_allocated(0) / 1024**2:.2f} MiB'); print(f'Memory Cached: {torch.cuda.memory_reserved(0) / 1024**2:.2f} MiB')"
-docker exec $container_name nvidia-smi
-
+# Deploy TGI server on the container
 
 # obs: cannot use quantize and dtype at the same time
 if [ "$quant" = "" ]; then
     docker exec $container_name bash -c "text-generation-launcher \
             --model-id $hf_endpoint --num-shard $num_shards --dtype float16 --tokenizer-config-path $hf_endpoint\
-             --max-batch-size $max_batch_size --max-input-tokens $max_input_tokens --max-total-tokens $max_total_tokens --max-batch-total-tokens $max_batch_total_tokens \
+             --max-batch-size $max_batch_size --max-input-tokens $max_input_tokens --max-total-tokens $max_total_tokens \
+             --max-batch-total-tokens $max_batch_total_tokens \
              --trust-remote-code --cuda-memory-fraction 0.98 --port 8080 --master-port 8080 --master-addr localhost"
 else
     docker exec $container_name bash -c "text-generation-launcher \

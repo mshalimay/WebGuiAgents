@@ -1,5 +1,5 @@
 # google api key
-export GOOGLE_API_KEY="AIzaSyAI0XvTWHzl2ckpwQWMRuHNuaYlS1zrcGs"
+export GOOGLE_API_KEY="AIzaSyCmqYPObitVV81ARC7_tofzArttNt63Y84"
 
 # website urls for testing
 export CLASSIFIEDS="http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:9980"
@@ -30,33 +30,34 @@ get_flag() {
 #---------------------------------------------
 
 # Models
-model=gemini-pro-1.0; provider=google   
+model=gemini-pro-1.0-vision; provider=google   
 # model='llama-3/8b-instruct'; provider='huggingface'
 # model='llava-llama-3/8b-instruct'; provider='huggingface'
-vlm=$(get_flag 'vlm' false)   # if true, use visual language model / input
+vlm=$(get_flag 'vlm' true)   # if true, use visual language model / input
 
+fuzzy_match_provider='huggingface'
 
 # Prompting
-mode='chat' # 'completion', 'chat'
-instruction='p_cot_id_actree_2s_no_na'      # p_cot_id_actree_2s_no_na, p_cot_id_actree_3s, p_multimodal_cot_id_actree_3s
+mode='completion' # 'completion', 'chat'
+instruction='p_cot_id_actree_3s'            # p_cot_id_actree_2s_no_na, p_cot_id_actree_3s, p_multimodal_cot_id_actree_3s
 sys_prompt=$(get_flag 'sys_prompt' true)    # for GEMINI: if true, adds system prompt hint 
 
 # Generation                              
-temperature=0.9                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 for others (see VisualWebArena).
+temperature=0.9                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 llama-3 | 0.6 for others (see VisualWebArena).
 top_p=1.0                                   # Default: 0.9 for GPT | 1.0 Gemini-Pro | 0.9 llama-3 | 0.95 for others (see VisualWebArena).
 max_tokens=500                              # Max tokens to generate. Default: 384.
 context_length=0                            # Used in open AI. Default: 0.
 top_k=40                                    # Used in gemini. Default: 0 (uses gemini default). Obs: gemini defaults to None, despite documentation saying default is 40.
 
 # Input size parameters 
-max_obs_length=15360                         # In tokens. # Default: 3840 | 640 for models with small ctx | 15360 chars for Gemini-Pro 
-current_viewport_only=$(get_flag 'current_viewport_only' true)   # Default: true
+max_obs_length=15360                        # In tokens. # Default: 3840 | 640 for models with small ctx | 15360 chars for Gemini-Pro (100 tokens ~60-80 words)
 viewport_width=1280                         # Default: 1280  
 viewport_height=1024                        # Default: 720 for small context window models | 2048 for large context window models
+current_viewport_only=$(get_flag 'current_viewport_only' true)   # Default: true
 
 # Tasks
-test_start_idx=8
-test_end_idx=9
+test_start_idx=0
+test_end_idx=26
 swap_tasks=$(get_flag 'swap_tasks' false)   # if true, swap fuzzy_match tasks by the tasks immediately after them
 
 # Execution params
@@ -87,6 +88,12 @@ render=$(get_flag 'render' false)                           # shows the browser 
 #------------------------------------------------------------------------------
 # End to End evaluation
 #-----------------------------------------------------------------------------
+# Autologin cookies (needs to run only one time)
+if [ ! -d .auth ]; then
+    echo "Creating autologin cookies"
+    ./prepare.sh
+fi
+
 # make results directory if it doesn't exist
 mkdir -p $result_dir
 
@@ -127,5 +134,5 @@ python3 run.py \
     $eager \
     --max_model_len $max_model_len \
     --test_config_base_dir $test_config_base_dir \
-
-
+    --flash_attn $flash_attn \
+    --fuzzy_match_provider $fuzzy_match_provider \

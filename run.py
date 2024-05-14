@@ -1,5 +1,5 @@
 """Script to run end-to-end evaluation on the benchmark"""
-
+import pandas as pd
 
 #NOTE: new @mandrade
 import os
@@ -17,7 +17,7 @@ os.environ[
         ] = "http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:7770"
 os.environ[
             "SHOPPING_ADMIN"
-        ] = "http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:7780/admin"
+        ] = "http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:7780/admin/admin/"
 os.environ[
             "REDDIT"
         ] = "http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:9999"
@@ -47,6 +47,7 @@ from llms.providers.google_utils import define_google_model
 # export TF_CPP_MIN_LOG_LEVEL=2
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+observation_lens = {}
 
 
 # end new @mandrade
@@ -232,7 +233,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--result_dir", type=str, default="")
 
 
-    #NOTE new args
+    #REVIEW[mandrade]: added arguments
     parser.add_argument('--deployment_mode', choices=["tgi", "vllm", "automodel"], default="automodel",
                         help='Deployment mode for the hugging-face models. If TGI, model_endpoint should be provided.')
     
@@ -264,6 +265,11 @@ def config() -> argparse.Namespace:
 
     parser.add_argument('--flash_attn', action="store_true", 
         help='Uses flash attention in AutoModel engine.')
+
+    parser.add_argument('--fuzzy_match_provider', type=str, default='openai',
+            choices=['openai', 'google', 'huggingface'],
+            help="LLM provider for fuzzy matching evaluation. If not provided, uses GPT4-Turbo. If GPT not available, \
+            uses Gemini Pro 1.5 or 1.0, whichever is available. If 'huggingface', uses LLAMA-3-Instruct-8b.")
     
     args = parser.parse_args()
     # check the whether the action space is compatible with the observation space
@@ -428,6 +434,14 @@ def test(
             state_info: StateInfo = {"observation": obs, "info": info}
             trajectory.append(state_info)
 
+            #REVIEW[mandrade] Log observation length
+            observation_lens[task_id]={}
+            observation_lens[task_id]['raw']=[]
+            observation_lens[task_id]['raw'].append(len(obs['text']))
+            if agent.prompt_constructor.tokenizer.tokenizer is not None:
+                observation_lens[task_id]['tokenized']=[]
+                observation_lens[task_id]['tokenized'].append(len(agent.prompt_constructor.tokenizer(obs['text'])))
+
             meta_data = {"action_history": ["None"]}
             while True:
                 early_stop_flag, stop_info = early_stop(
@@ -438,7 +452,7 @@ def test(
                     action = create_stop_action(f"Early stop: {stop_info}")
                 else:
                     try:
-                        task_id = None if args.warmup > 0 else 0 # Dont save conversation if warmup
+                        task_id = None if args.warmup > 0 else task_id # Dont save conversation if warmup
                         # Construct prompt, get LLM answer, transform into action (eg: scroll)
                         action = agent.next_action(
                             trajectory,
@@ -468,11 +482,29 @@ def test(
                 meta_data["action_history"].append(action_str)
 
                 if action["action_type"] == ActionTypes.STOP:
+                    #REVIEW[mandrade]: for no N/A prompting, a impossible action will typically return a stop action with empty answer.
+                    # But this will be evaluated as fail in fuzzy_match. Either adjust prompting (but problems of early stopping) or use less stringent evaluation.
+                    # If action string contains only space-like characters or empty, replace for the raw prediction or N/A.
+                    # Use raw prediction for fuzzy match of tasks with ref answers like: 'There is no airport within 5 km of'
+                    # E.g. original: There is no airport within... next action is ```stop [ ]``` -> action_str = stop [ ] -> answer = ""
+                    if check_fuzzy_match(config_file='', config=_c):
+                        test_string = re.sub(r"\s+", "", action_str)
+                        if test_string == "stop[]":
+                            if check_na_ref_answer(_c):
+                                trajectory[-1]["answer"] = "n/a"  # answer = "" -> 'n/a'
+                            else:
+                                action_splitter = agent.prompt_constructor.instruction["meta_data"]["action_splitter"]
+                                trajectory[-1]["answer"] = action['raw_prediction'].split(action_splitter)[0].strip().lower() # answer = "" -> there is no airport within... next action is 
                     break
 
                 obs, _, terminated, _, info = env.step(action)
                 state_info = {"observation": obs, "info": info}
                 trajectory.append(state_info)
+
+                #REVIEW[mandrade] Log observation length
+                observation_lens[task_id]['raw'].append(len(obs['text']))
+                if agent.prompt_constructor.tokenizer.tokenizer is not None:
+                    observation_lens[task_id]['tokenized'].append(len(agent.prompt_constructor.tokenizer(obs['text'])))
 
                 if terminated:
                     # add a action place holder
@@ -481,7 +513,7 @@ def test(
 
             # NOTE: eval_caption_image_fn is used for running eval_vqa functions.
             evaluator = evaluator_router(
-                config_file, captioning_fn=eval_caption_img_fn
+                config_file, captioning_fn=eval_caption_img_fn, fuzzy_match_prov=args.fuzzy_match_provider
             )
             score = evaluator(
                 trajectory=trajectory,
@@ -497,6 +529,7 @@ def test(
                 logger.info(f"[Result] (FAIL) {config_file}")
 
             # Store scores and save trace
+            #REVIEW[mandrade]: added warmup
             if args.warmup == 0:
                 scores.append(score)
             
@@ -507,7 +540,18 @@ def test(
             else:
                 logger.info(f"[Warmup] {args.warmup}")
                 args.warmup -= 1
-        # End of Test
+
+            # Compute average observation length
+            if task_id in observation_lens:
+                avg_raw = sum(observation_lens[task_id]['raw']) / len(observation_lens[task_id]['raw'])
+                logger.info(f"[Avg Obs Len] Task {task_id}: Raw: {avg_raw}")
+                if len(observation_lens[task_id])==2:
+                    avg_tokenized = sum(observation_lens[task_id]['tokenized']) / len(observation_lens[task_id]['tokenized'])
+                    logger.info(f"[Avg Obs Len] Task {task_id}: Tokenized: {avg_tokenized}")
+
+            # End of Task (while)
+
+        # End of Test (for task in tasks)
 
         except openai._exceptions.OpenAIError as e:
             logger.info(f"[OpenAI Error] {repr(e)}")
@@ -521,10 +565,19 @@ def test(
                 f.write(f"[Unhandled Error] {repr(e)}\n")
                 f.write(traceback.format_exc())  # write stack trace to file
 
+        # save observation lengths
+        pd.DataFrame(observation_lens).to_csv(f"{args.result_dir}/observation_lens.csv")
         render_helper.close()
 
     env.close()
     logger.info(f"Average score: {sum(scores) / len(scores)}")
+
+def check_na_ref_answer(config_file):
+    reference_answers = config_file['eval']["reference_answers"]
+    if reference_answers is not None:
+        ref_answers = [item for item in reference_answers.values()]
+        return any(["N/A" in ans for ans in ref_answers])
+    return False
 
 
 def prepare(args: argparse.Namespace) -> None:
@@ -544,7 +597,7 @@ def prepare(args: argparse.Namespace) -> None:
         args.result_dir = result_dir
         logger.info(f"Create result dir: {result_dir}")
 
-    if not (Path(result_dir) / "traces").exists():
+    if args.save_trace_enabled and not (Path(result_dir) / "traces").exists():
         (Path(result_dir) / "traces").mkdir(parents=True)
 
     # Log the log file
@@ -583,10 +636,11 @@ def dump_config(args: argparse.Namespace) -> None:
             json.dump(vars(args), f, indent=4)
             logger.info(f"Dump config to {config_file}")
 
-#REVIEW @modified
-def check_fuzzy_match(config_file:str):
-    with open(config_file) as f:
-        config = json.load(f)
+#REVIEW[mandrade]: added some auxiliary functions
+def check_fuzzy_match(config_file:str=None, config=None):
+    if config is None:
+        config = json.load(open(config_file))
+    if config['eval']['reference_answers'] is not None:
         if 'fuzzy_match' in config['eval']['reference_answers']:
             return True
     return False
@@ -602,7 +656,7 @@ def swap_tasks(config_list, test_config_base_dir, st_idx, ed_idx, verbose=True):
     n_tasks_add = num_tasks - len(temp_list)
     while n_tasks_add > 0:
         config_file = os.path.join(test_config_base_dir, f"{idx}.json")
-        if not check_fuzzy_match(config_file):
+        if not check_fuzzy_match(config_file=config_file):
             new_tasks.append(config_file)
             n_tasks_add -= 1
         idx += 1
@@ -620,6 +674,9 @@ def load_model_config(model_repo_file:str):
     with open(model_repo_file, 'r') as file:
         config = yaml.safe_load(file)
     return config
+
+
+# Auxiliary functions for local TGI deployment
 
 def deploy_tgi(model_path, quantize, num_shard):
     print(f'\n\nDeploying TGI locally for model {model_path}\n')
@@ -743,15 +800,16 @@ if __name__ == "__main__":
         prepare(args)
 
         ## FIXME @debug interactive
-        # os.environ['GOOGLE_API_KEY'] = 'your_key'    
-        # args.model='llama-3/8b-instruct'; args.provider='huggingface'
+        # os.environ['GOOGLE_API_KEY'] = 'AIzaSyCmqYPObitVV81ARC7_tofzArttNt63Y84'    
+        # # args.model='llama-3/8b-instruct'; args.provider='huggingface'
+        # args.model="gemini-pro-1.0"; args.provider="google"
         # args.test_start_idx=0
-        # args.test_end_idx=10
+        # args.test_end_idx=26
         # args.model_endpoint='http://127.0.0.1:8080'
         # args.render=False
         # args.slow_mo=0 if not args.render else 100
         # args.mode='chat'
-        # args.instruction_path='./agent/prompts/jsons/p_cot_id_actree_2s_no_na.json'
+        # args.instruction_path='./agent/prompts/jsons/p_cot_id_actree_3s.json'
         # args.result_dir='results/debug'
         # args.sys_prompt=True
         # args.local=False
@@ -759,7 +817,7 @@ if __name__ == "__main__":
         # args.warmup=0
         # args.swap_tasks=True
         # args.deployment_mode='automodel'
-        # end of @debug    
+        ## end of @debug    
 
         # print full path to result_dir
         print(f"\nResults will be saved in {os.path.abspath(args.result_dir)}\n")
@@ -801,7 +859,7 @@ if __name__ == "__main__":
 
         if 'google' in args.provider.lower():
             args.model_path = model_config['models'][args.model]['model_path']
-            args.tokenizer_path = None
+            args.tokenizer_path=None
 
         # Save args file to results folder
         os.makedirs(args.result_dir, exist_ok=True)
@@ -839,9 +897,13 @@ if __name__ == "__main__":
         # Evaluate
         test(args, agent, test_file_list, caption_img_fn=caption_img_fn, eval_caption_img_fn=eval_caption_img_fn)
 
+        # save log file to results folder
+        os.rename(LOG_FILE_NAME, f"{args.result_dir}/log.txt")
+
     except Exception as e:
         # print traceback
         import traceback
         traceback.print_exc()  # This prints the full traceback to stderr
-        terminate_process(tgi_process)
-        sys.exit(0)
+        if 'tgi_process' in locals():
+            terminate_process(tgi_process)
+            sys.exit(0)

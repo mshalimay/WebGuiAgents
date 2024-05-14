@@ -8,6 +8,7 @@ import requests
 from beartype import beartype
 from beartype.typing import Dict, List
 from playwright.sync_api import CDPSession, Page
+from google.api_core.exceptions import InternalServerError, ResourceExhausted
 
 from browser_env.env_config import (
     ACCOUNTS,
@@ -24,10 +25,19 @@ except ImportError:
 
 from llms.providers.google_utils import (
     generate_from_google_completion,
+    generate_from_google_completion_noretry,
     wrap_system_prompt
 )
 
+from llms.providers.hf_utils import (
+    generate_from_huggingface_fuzzy_match
+)
+
+from agent.prompts.prompt_constructor import create_llama3_chat_input
+
+
 google_fuzzy_match_model='models/gemini-1.5-pro-latest'
+hf_fuzzy_match_model='meta-llama/Meta-Llama-3-8B-Instruct'
 
 class PseudoPage:
     def __init__(self, original_page: Page, url: str):
@@ -623,16 +633,42 @@ def llm_fuzzy_match(pred: str, reference: str, question: str, provider:str='open
 
         messages.append({'role':'model', 'parts': "Understood." })
         messages.append({'role':'user', 'parts': message})
-        print(messages)
-        response = generate_from_google_completion(
-                            model=google_fuzzy_match_model,
-                            prompt=messages, 
-                            temperature=0.0,
-                            max_new_tokens=768,
-                            top_p=1.0,
-                            task_id=None,).lower()
-        
+        gen_kwargs = {
+            'model': google_fuzzy_match_model,
+            'prompt': messages,
+            'temperature': 0.0,
+            'max_new_tokens': 768,
+            'top_p': 1.0,
+            'task_id': None,
+        }
+        try:
+            response = generate_from_google_completion_noretry(**gen_kwargs).lower()
+        except ResourceExhausted as e:
+            gen_kwargs['model'] = 'models/gemini-1.0-pro-latest'
+            response = generate_from_google_completion_noretry(**gen_kwargs).lower()
 
+    elif provider=='huggingface':
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": message},
+        ]
+        response = generate_from_huggingface_fuzzy_match(
+            messages=messages,
+            model_endpoint=None,
+            temperature=0.01,
+            top_p=1.0,
+            max_new_tokens=768,
+            stop_sequences=None,
+            conversation_file=None,
+            task_id=None,
+            local=False,
+            engine='automodel',
+            model=hf_fuzzy_match_model,
+        ).lower()
+        
+            
+    print(pred)
+    print(reference)
     print(response)
     if "partially correct" in response or "incorrect" in response:
         return 0.0
@@ -679,16 +715,41 @@ def llm_ua_match(pred: str, reference: str, question: str, provider:str='openai'
 
         messages.append({'role':'model', 'parts': "Understood." })
         messages.append({'role':'user', 'parts': message})
-        response = generate_from_google_completion(
-                            model=google_fuzzy_match_model,
-                            prompt=messages, 
-                            temperature=0.0,
-                            max_new_tokens=768,
-                            top_p=1.0,
-                            task_id=None,).lower()
-        
+        gen_kwargs = {
+            'model': google_fuzzy_match_model,
+            'prompt': messages,
+            'temperature': 0.0,
+            'max_new_tokens': 768,
+            'top_p': 1.0,
+            'task_id': None,
+        }
+        try:
+            response = generate_from_google_completion_noretry(gen_kwargs).lower()
+        except ResourceExhausted as e:
+            gen_kwargs['model'] = 'models/gemini-1.0-pro-latest'
+            response = generate_from_google_completion_noretry(gen_kwargs).lower()
 
-    print(response)
+    elif provider=='huggingface':
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": message},
+        ]
+        response = generate_from_huggingface_fuzzy_match(
+            messages=messages,
+            model_endpoint=None,
+            temperature=0.01,
+            top_p=1.0,
+            max_new_tokens=768,
+            stop_sequences=None,
+            conversation_file=None,
+            task_id=None,
+            local=False,
+            engine='automodel',
+            model=hf_fuzzy_match_model,
+        ).lower()
+
+    print(pred)
+    print(reference)
     if "different" in response:
         return 0.0
     else:

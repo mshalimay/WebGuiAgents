@@ -11,7 +11,9 @@ from llms.tokenizers import Tokenizer
 from llms.utils import APIInput
 from PIL import Image
 from llms.providers.google_utils import wrap_system_prompt
-from llms.providers.hf_utils import transform_imgs_llava3_intel
+from llms.providers.hf_utils import transform_imgs_llava3_intel, create_llama3_chat_input
+
+
 
 class Instruction(TypedDict):
     """Instruction for constructing prompt"""
@@ -393,6 +395,7 @@ class DirectPromptConstructor(PromptConstructor):
                 obs = self.tokenizer.decode(self.tokenizer.encode(obs, add_special_tokens=False)[:max_obs_length], 
                                             skip_special_tokens=False)  # type: ignore[arg-type]
 
+
         page = state_info["info"]["page"]
         url = page.url
         previous_action_str = meta_data["action_history"][-1]
@@ -412,10 +415,20 @@ class DirectPromptConstructor(PromptConstructor):
 
     def _extract_action(self, response: str) -> str:
         action_splitter = self.instruction["meta_data"]["action_splitter"]
+        # REVIEW[mandrade]: problem: gets only the first ocurrence before the action splitter.
+        # If the llm answer something with ``` then a correct action ```action ...```, will parse the wrong part.
         pattern = rf"{action_splitter}((.|\n)*?){action_splitter}"
-        match = re.search(pattern, response)
-        if match:
-            return match.group(1).strip()
+
+        # match = re.search(pattern, response)
+        # if match:
+        #     return match.group(1).strip()
+
+        # Modification: get the last ocurrence of all matches, as it is instructed for LLM to return action last.
+        # Alternatively: modify the action splitter to an even more rare string. Problem is complexifying too much the LLM's job.
+        matchs = re.findall(pattern, response)
+        if matchs:
+            return matchs[-1][0].strip()
+
         else:
             raise ActionParsingError(
                 f"Cannot parse action from response {response}"
@@ -629,21 +642,3 @@ class MultimodalCoTPromptConstructor(CoTPromptConstructor):
                     f"GPT-4V models do not support mode {self.lm_config.mode}"
                 )
    
-
-
-def create_llama3_chat_input(messages:list[dict], tokenizer, engine:str) -> str:
-    # https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
-        
-    input = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-
-    # If deploying with VLLM or TGI, use the text string directly
-    if engine == 'vllm' or engine == 'tgi':
-        return input
-    # Transformers AutoModel uses the embedding; need to remove <|begin_of_text|> or else will get duplicated when encoding.
-    elif engine == 'automodel': 
-        return input.split("<|begin_of_text|>")[1]
-        #OBS: # This is just to keep the prompt creation in string format for all deployment modes;
-        # could return the tokenIDs directly to use in Transformers AutoModel
-    else:
-        raise ValueError(f"Engine {engine} not supported.")
-    

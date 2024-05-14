@@ -9,7 +9,6 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-# FIXME: workaround because CLASSIEDS is not being imported for some strange reason
 
 from browser_env.env_config import (
     ACCOUNTS,
@@ -39,6 +38,10 @@ URLS.extend([f"{SHOPPING_ADMIN}/dashboard", f"{GITLAB}/-/profile"])
 EXACT_MATCH.extend([True, True])
 KEYWORDS.extend(["Dashboard", ""])
 
+# REVIEW[mandrade]: increased timeout
+# Was failing for shopping_admin because of timeout
+TIMEOUT=5000*100
+
 assert len(SITES) == len(URLS) == len(EXACT_MATCH) == len(KEYWORDS)
 def is_expired(
     storage_state: Path, url: str, keyword: str, url_exact: bool = True
@@ -52,7 +55,7 @@ def is_expired(
     browser = playwright.chromium.launch(headless=True, slow_mo=SLOW_MO)
     context = browser.new_context(storage_state=storage_state)
     page = context.new_page()
-    page.goto(url)
+    page.goto(url, timeout=TIMEOUT)
     time.sleep(1)
     d_url = page.url
     content = page.content()
@@ -76,7 +79,7 @@ def renew_comb(comb: list[str], auth_folder: str = "./.auth") -> None:
     if "shopping" in comb:
         username = ACCOUNTS["shopping"]["username"]
         password = ACCOUNTS["shopping"]["password"]
-        page.goto(f"{SHOPPING}/customer/account/login/")
+        page.goto(f"{SHOPPING}/customer/account/login/", timeout=TIMEOUT)
         page.get_by_label("Email", exact=True).fill(username)
         page.get_by_label("Password", exact=True).fill(password)
         page.get_by_role("button", name="Sign In").click()
@@ -84,7 +87,7 @@ def renew_comb(comb: list[str], auth_folder: str = "./.auth") -> None:
     if "reddit" in comb:
         username = ACCOUNTS["reddit"]["username"]
         password = ACCOUNTS["reddit"]["password"]
-        page.goto(f"{REDDIT}/login")
+        page.goto(f"{REDDIT}/login", timeout=TIMEOUT)
         page.get_by_label("Username").fill(username)
         page.get_by_label("Password").fill(password)
         page.get_by_role("button", name="Log in").click()
@@ -92,7 +95,7 @@ def renew_comb(comb: list[str], auth_folder: str = "./.auth") -> None:
     if "classifieds" in comb:
         username = ACCOUNTS["classifieds"]["username"]
         password = ACCOUNTS["classifieds"]["password"]
-        page.goto(f"{CLASSIFIEDS}/index.php?page=login")
+        page.goto(f"{CLASSIFIEDS}/index.php?page=login", timeout=TIMEOUT)
         page.locator("#email").fill(username)
         page.locator("#password").fill(password)
         page.get_by_role("button", name="Log in").click()
@@ -100,7 +103,8 @@ def renew_comb(comb: list[str], auth_folder: str = "./.auth") -> None:
     if "shopping_admin" in comb:
         username = ACCOUNTS["shopping_admin"]["username"]
         password = ACCOUNTS["shopping_admin"]["password"]
-        page.goto(f"{SHOPPING_ADMIN}")
+        #REVIEW[mandrade]: increased timeout
+        page.goto(f"{SHOPPING_ADMIN}", timeout=TIMEOUT)
         page.get_by_placeholder("user name").fill(username)
         page.get_by_placeholder("password").fill(password)
         page.get_by_role("button", name="Sign in").click()

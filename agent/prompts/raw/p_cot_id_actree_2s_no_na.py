@@ -3,7 +3,7 @@ prompt = {
 
 Here's the information you'll have:
 The user's objective: This is the task you're trying to complete.
-The current web page's accessibility tree: This is a simplified representation of the webpage, providing key information.
+The current web page's accessibility tree: This is a simplified representation of the webpage, providing information on the objects to interact.
 The current web page's URL: This is the page you're currently navigating.
 The open tabs: These are the tabs you have open.
 The previous action: This is the action you just performed. It may be helpful to track your progress.

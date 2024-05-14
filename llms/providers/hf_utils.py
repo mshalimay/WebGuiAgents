@@ -159,6 +159,50 @@ def generate_from_huggingface_completion(
     return generation
 
 
+def generate_from_huggingface_fuzzy_match(
+    messages: list[dict],
+    model_endpoint: str,
+    temperature: float,
+    top_p: float,
+    max_new_tokens: int,
+    stop_sequences: list[str] | None = None,
+    conversation_file: str | None = None,
+    task_id:int | None = None,
+    local: bool = False,
+    engine: str = 'automodel',
+    model:str = 'meta-llama/Meta-Llama-3-8B-Instruct',
+) -> str:
+    generation: str
+    if 'hf_model' not in globals() and 'hf_model' not in locals():
+        define_hf_model(model=model, vlmodel=False, model_path=model, tokenizer_path=model, quant=None, 
+                        engine='automodel', max_model_len=None, num_gpus=1, flash_attn=True, dtype='auto')
+
+    prompt = create_llama3_chat_input(messages, hf_tokenizer, engine)
+
+    generation = generate_from_huggingface_completion(prompt, model_endpoint, temperature, top_p, max_new_tokens, stop_sequences, conversation_file, task_id, local, engine)
+    return generation
+    
+
+
+
+def create_llama3_chat_input(messages:list[dict], tokenizer, engine:str) -> str:
+    # https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+        
+    input = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+    # If deploying with VLLM or TGI, use the text string directly
+    if engine == 'vllm' or engine == 'tgi':
+        return input
+    # Transformers AutoModel uses the embedding; need to remove <|begin_of_text|> or else will get duplicated when encoding.
+    elif engine == 'automodel': 
+        return input.split("<|begin_of_text|>")[1]
+        #OBS: # This is just to keep the prompt creation in string format for all deployment modes;
+        # could return the tokenIDs directly to use in Transformers AutoModel
+    else:
+        raise ValueError(f"Engine {engine} not supported.")
+    
+
+
 def get_terminators(model_name:str, tgi:bool=False, stop_seqs=None):
     if 'llama-3' in model_name and 'instruct' in model_name:
         # Obs: this intentionally includes llava-llama-3-8b-instruct

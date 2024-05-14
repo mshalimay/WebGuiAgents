@@ -1,3 +1,6 @@
+"""Experimentation and examples of generation with llava-llama3 from xtuner"""
+
+
 #-----------------------------------------------------------
 import torch
 from transformers import (

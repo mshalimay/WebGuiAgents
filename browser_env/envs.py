@@ -38,6 +38,8 @@ from .utils import (
 )
 
 
+TIMEOUT=5000*100
+
 @dataclass
 class PlaywrightScript:
     function: str  # goto, get_by_role
@@ -202,7 +204,8 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
                 ]:
                     client.send("Accessibility.enable")
                 page.client = client  # type: ignore
-                page.goto(url)
+                #REVIEW[mandrade]: increased timeout
+                page.goto(url, timeout=TIMEOUT)
             # set the first page as the current page
             self.page = self.context.pages[0]
             self.page.bring_to_front()

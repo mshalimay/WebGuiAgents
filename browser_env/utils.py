@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 from beartype import beartype
 from PIL import Image    
-from vertexai.preview.generative_models import Image as VertexImage
+
 @dataclass
 class DetachedPage:
     url: str
@@ -36,15 +36,7 @@ def pil_to_b64(img: Image.Image) -> str:
         img_b64 = "data:image/png;base64," + img_b64
     return img_b64
 
-
-def pil_to_vertex(img: Image.Image) -> str:
-    with BytesIO() as image_buffer:
-        img.save(image_buffer, format="PNG")
-        byte_data = image_buffer.getvalue()
-        img_vertex = VertexImage.from_bytes(byte_data)
-    return img_vertex
-
-
+#REVIEW[mandrade]: using google API directly, instead of Vertex
 def pil_to_google(img: Image.Image) -> Image.Image:
     # This coerces the image types to PIL.PngImagePlugin.PngImageFile.
     # Why: google/generativeai/types/content_types.py tests for PIL.PngImagePlugin.PngImageFile. 

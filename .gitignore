@@ -141,7 +141,8 @@ text-generation-inference/
 log_files/
 cache/
 .auth/
-*.md
 success_rates.png
 sysprompt.png
 config_files/test*
+notes.md
+tgi_setup_steps.md

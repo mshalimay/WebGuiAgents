@@ -108,8 +108,6 @@ sampling_params = SamplingParams(temperature=0.8, top_p=0.95, max_tokens=max_new
 z = llm.generate(prompt, sampling_params)
 
 z[0].outputs[0].text
-# clean GPU memory
-
 
 #-------------------------------------------------------------------------------
 ## VLM generation - gemini-pro-vision

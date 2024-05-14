@@ -1,3 +1,5 @@
+"""Experimentation and examples of generation with LLAMA3"""
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 

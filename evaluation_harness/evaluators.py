@@ -46,8 +46,9 @@ from evaluation_harness.helper_functions import (
 
 Trajectory = list[Union[Action, StateInfo]]
 
-#REVIEW[mandrade]: added alternative uzzy_match_provider
-# If OpenAI not available, use Google for fuzzy matching
+#REVIEW[mandrade]: added alternative fuzzy_match_provider
+# If fuzzy_match_provider is not set in args, use Google or OpenAI as default
+global fuzzy_match_provider
 try:
     from openai import API_KEY
     fuzzy_match_provider = 'openai'
@@ -207,7 +208,7 @@ class StringEvaluator(Evaluator):
     @staticmethod
     @beartype
     def ua_match(ref: str, pred: str, intent: str) -> float:
-        return llm_ua_match(pred, ref, intent)
+        return llm_ua_match(pred, ref, intent, provider=fuzzy_match_provider)
 
     def __call__(
         self,
@@ -244,7 +245,7 @@ class StringEvaluator(Evaluator):
                                     for value in value_or
                                 ]
                             )
-                #REVIEW: modified to allow more than one option as in url evaluator
+                #REVIEW[mandrade]: modified to allow more than one option as in url evaluator
                 case "must_include":
                     assert isinstance(value, list)
                     for must_value in value:
@@ -641,11 +642,16 @@ class EvaluatorComb:
 
 @beartype
 def evaluator_router(
-    config_file: Path | str, captioning_fn=None
+    config_file: Path | str, captioning_fn=None, fuzzy_match_prov=None
 ) -> EvaluatorComb:
     """Router to get the evaluator class"""
     with open(config_file, "r") as f:
         configs = json.load(f)
+
+    #REVIEW[mandrade]: added alternative fuzzy_match_provider
+    if fuzzy_match_prov is not None:
+        global fuzzy_match_provider
+        fuzzy_match_provider = fuzzy_match_prov
 
     eval_types = configs["eval"]["eval_types"]
     evaluators: list[Evaluator | EvaluatorPartial] = []

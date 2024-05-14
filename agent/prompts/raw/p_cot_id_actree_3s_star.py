@@ -4,7 +4,6 @@ prompt = {
 Here's the information you'll have:
 The user's objective: This is the task you're trying to complete.
 The current web page's accessibility tree: This representation of the webpage provides information of its contents and the objects you can interact.
-The current web page screenshot: An image with a visual representation of the webpage.
 The current web page's URL: This is the page you're currently navigating.
 The open tabs: These are the tabs you have open.
 The previous action: This is the action you just performed. It may be helpful to track your progress.
@@ -12,30 +11,30 @@ The previous action: This is the action you just performed. It may be helpful to
 The actions you can perform fall into several categories:
 
 Page Operation Actions:
-```click [id]```: This action clicks on an element with a specific id on the webpage.
-```type [id] [content]```: Use this to type the content into the field with id. By default, the "Enter" key is pressed after typing unless press_enter_after is set to 0, i.e., ```type [id] [content] [0]```.
-```hover [id]```: Hover over an element with id.
-```press [key_comb]```:  Simulates the pressing of a key combination on the keyboard (e.g., Ctrl+v).
-```scroll [down]``` or ```scroll [up]```: Scroll the page up or down. This can be used to get accessibility tree data and visuals not present in the current webpage frame.
+````click [id]````: This action clicks on an element with a specific id on the webpage.
+````type [id] [content]````: Use this to type the content into the field with id. By default, the "Enter" key is pressed after typing unless press_enter_after is set to 0, i.e., ````type [id] [content] [0]````.
+````hover [id]````: Hover over an element with id.
+````press [key_comb]````:  Simulates the pressing of a key combination on the keyboard (e.g., Ctrl+v).
+````scroll [down]```` or ````scroll [up]````: Scroll the page up or down. This can be used to get accessibility tree data not present in the current webpage frame.
 
 Tab Management Actions:
-```new_tab```: Open a new, empty browser tab.
-```tab_focus [tab_index]```: Switch the browser's focus to a specific tab using its index.
-```close_tab```: Close the currently active tab.
+````new_tab````: Open a new, empty browser tab.
+````tab_focus [tab_index]````: Switch the browser's focus to a specific tab using its index.
+````close_tab````: Close the currently active tab.
 
 URL Navigation Actions:
-```goto [url]```: Navigate to a specific URL.
-```go_back```: Navigate to the previously viewed page.
-```go_forward```: Navigate to the next page (if a previous 'go_back' action was performed).
+````goto [url]````: Navigate to a specific URL.
+````go_back````: Navigate to the previously viewed page.
+````go_forward````: Navigate to the next page (if a previous 'go_back' action was performed).
 
 Completion Action:
-```stop [answer]```: Issue this action when you believe the task is complete. If the objective is to find a text-based answer, provide the answer in the bracket.
+````stop [answer]````: Issue this action when you believe the task is complete. If the objective is to find a text-based answer, provide the answer in the bracket.
 
 To be successful, it is very important to follow the following rules:
 1. You should only issue an action that is valid given the current observation
 2. You should only issue one action at a time.
 3. You should follow the examples to reason step by step and then issue the next action.
-4. Generate the action in the correct format. Start with a "In summary, the next action I will perform is" phrase, followed by action inside ``````. For example, "In summary, the next action I will perform is ```some_action [1234]```".
+4. Generate the action in the correct format. Start with a "In summary, the next action I will perform is" phrase, followed by action inside ````````. For example, "In summary, the next action I will perform is ````some_action [1234]````".
 5. Issue stop action when you think you have achieved the objective. Don't generate anything after stop.""",
 	"examples": [
 		(
@@ -48,8 +47,7 @@ To be successful, it is very important to follow the following rules:
 URL: http://onestopmarket.com/office-products/office-electronics.html
 OBJECTIVE: What is the price of HP Inkjet Fax Machine?
 PREVIOUS ACTION: None""",
-			"Let's think step-by-step. This page list the information of HP Inkjet Fax Machine, which is the product identified in the objective. Its price is $279.49. I think I have achieved the objective. I will issue the stop action with the answer. In summary, the next action I will perform is ```stop [$279.49]```",
-            "agent/prompts/multimodal_examples/multimodal_example1.png"
+			"Let's think step-by-step. This page list the information of HP Inkjet Fax Machine, which is the product identified in the objective. Its price is $279.49. I think I have achieved the objective. I will issue the stop action with the answer. In summary, the next action I will perform is ````stop [$279.49]````",
 		),
 		(
 			"""OBSERVATION:
@@ -73,8 +71,7 @@ PREVIOUS ACTION: None""",
 URL: http://reddit.com
 OBJECTIVE: Tell me what the top comment on the croissant post says.
 PREVIOUS ACTION: None""",
-			"Let's think step-by-step. This page has a post titled '[I ate] Maple Pecan Croissant', which is the post mentioned in the objective. In order to find the top comment, I will navigate into the comments section of the post. In summary, the next action I will perform is ```click [1499]```",
-            "agent/prompts/multimodal_examples/multimodal_example2.png"
+			"Let's think step-by-step. This page has a post titled '[I ate] Maple Pecan Croissant', which is the post mentioned in the objective. In order to find the top comment, I will navigate into the comments section of the post. In summary, the next action I will perform is ````click [1499]````",
 		),
 		(
 			"""OBSERVATION:
@@ -95,8 +92,7 @@ PREVIOUS ACTION: None""",
 URL: http://classifieds.com
 OBJECTIVE: Help me find the cheapest dark colored guitar.
 PREVIOUS ACTION: None""",
-			"Let's think step-by-step. The objective is to find the cheapest dark colored guitar on the site. The site has a search box whose ID is [81]. I can search for guitars by entering \"guitar\". I can submit this by pressing the Enter afterwards. In summary, the next action I will perform is ```type [81] [guitar] [1]```",
-            "agent/prompts/multimodal_examples/multimodal_example3.png"
+			"Let's think step-by-step. The objective is to find the cheapest dark colored guitar on the site. The site has a search box whose ID is [81]. I can search for guitars by entering \"guitar\". I can submit this by pressing the Enter afterwards. In summary, the next action I will perform is ````type [81] [guitar] [1]````",
 		),
 	],
 	"template": """OBSERVATION:
@@ -110,6 +106,6 @@ PREVIOUS ACTION: {previous_action}""",
 		"keywords": ["url", "objective", "observation", "previous_action"],
 		"prompt_constructor": "CoTPromptConstructor",
 		"answer_phrase": "In summary, the next action I will perform is",
-		"action_splitter": "```"
+		"action_splitter": "````"
 	},
 }
