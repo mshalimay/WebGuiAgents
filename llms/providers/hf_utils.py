@@ -40,10 +40,13 @@ def define_hf_model(model:str, model_path: str, vlmodel:bool, tokenizer_path:str
         }
         if flash_attn: kwargs.update({'attn_implementation': 'flash_attention_2'})
 
+        # TODO: move this to YAML file and pass to the function via run.py instead
+        if 'llama-3' in model_name: kwargs['torch_dtype'] = torch.bfloat16
+
         # Load the model
         if vlmodel:
             if 'llava' in model_name:
-                hf_model = LlavaForConditionalGeneration.from_pretrained(model_path, **kwargs)
+                hf_model = LlavaForConditionalGeneration.from_pretrained(model_path, torch_dtype=dtype, device_map='cuda:0')
             else:
                 raise NotImplementedError(f"Model {model_name} not inplemented yet")
         else:

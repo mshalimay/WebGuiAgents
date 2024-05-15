@@ -32,16 +32,18 @@ get_flag() {
 
 # Models
 # model=gemini-pro-1.0-vision; provider=google   # gemini-pro-1.0-vision | gemini-pro-1.0
-model='llama-3/8b-instruct'; provider='huggingface'
-# model='llava-llama-3/8b-instruct'; provider='huggingface'
-vlm=$(get_flag 'vlm' false)   # if true, use visual language model / input
+# model='llama-3/8b-instruct'; provider='huggingface'
+vlm=$(get_flag 'vlm' true)   # if true, use visual language model / input
 
-fuzzy_match_provider='huggingface'
+model='llava-llama-3/8b-instruct'; provider='huggingface'
+captioning_model=Salesforce/blip2-flan-t5-xl
+observation_type=accessibility_tree_with_captioner
+fuzzy_match_provider='google'
 
 # Prompting
-mode='chat'                                 # 'completion', 'chat'
-sys_prompt=$(get_flag 'sys_prompt' true)    # for GEMINI: if true, adds system prompt hint 
-instruction='p_cot_id_actree_3s'            # p_cot_id_actree_2s_no_na, p_cot_id_actree_3s, p_multimodal_cot_id_actree_3s
+mode='chat'                                            # 'completion', 'chat'
+sys_prompt=$(get_flag 'sys_prompt' true)               # for GEMINI and LLaVA: if true, adds system prompt hint 
+instruction='p_multimodal_cot_id_actree_3s'            # p_cot_id_actree_2s_no_na, p_cot_id_actree_3s, p_multimodal_cot_id_actree_3s
 
 # Generation                              
 temperature=0.6                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 llama-3 | 0.6 for others (see VisualWebArena).
@@ -59,15 +61,15 @@ current_viewport_only=$(get_flag 'current_viewport_only' true)   # Default: true
 # Tasks
 test_start_idx=0
 test_end_idx=26
-swap_tasks=$(get_flag 'swap_tasks' false)   # if true, swap fuzzy_match tasks by the tasks immediately after them
+swap_tasks=$(get_flag 'swap_tasks' false)       # if true, swap fuzzy_match tasks by the tasks immediately after them
 
 # Execution params
-deployment_mode='automodel'                 # For Hugging Face models; deploys with 'tgi', 'automodel', 'vllm'
-flash_attn=$(get_flag 'flash_attn' true)    # autmodel-only: if true, uses flash attention
-model_endpoint='http://127.0.0.1:8080'      # tgi-only: example: 'http://127.0.0.1:8080'
-local=$(get_flag 'local' false)             # tgi-only: if true, will deploy a local tgi server
-eager=$(get_flag 'eager' false)             # vllm engine only. Eager mode in Transformers. True uses less memory, but slower.
-max_model_len=-1                            # vllm engine only. If -1, use the default max model length for the model.
+deployment_mode='automodel'                     # For Hugging Face models; deploys with 'tgi', 'automodel', 'vllm'
+flash_attn=$(get_flag 'flash_attn' true)        # autmodel-only: if true, uses flash attention
+model_endpoint='http://127.0.0.1:8080'          # tgi-only: example: 'http://127.0.0.1:8080'
+local=$(get_flag 'local' false)                 # tgi-only: if true, will deploy a local tgi server
+eager=$(get_flag 'eager' false)                 # vllm engine only. Eager mode in Transformers. True uses less memory, but slower.
+max_model_len=-1                                # vllm engine only. If -1, use the default max model length for the model.
 
 # Max steps, early stopping
 max_steps=30
@@ -82,10 +84,11 @@ render=$(get_flag 'render' false)                           # shows the browser 
 [ "$render" = '--render' ] && slow_mo=100 || slow_mo=0      # slow_mo=100 if rendering the browser
 
 
-temperatures=(0.6 0.9 0.5)
-for max_obs_length in ${observation_lens[@]}; do
+# temperatures=(0.6 0.9 0.5)
+# for temperature in ${temperatures[@]}; do
     #paths
-    result_dir=./results/${provider}/${model}-${mode}/$(date +%Y%m%d_%H_%M)
+    # result_dir=./results/${provider}/${model}-${mode}/$(date +%Y%m%d_%H_%M)
+    result_dir=/home/mashalimay/webarena/visualwebarena/results/huggingface/llava-llama-3/8b-instruct-chat/20240515_16_56
     instruction_path=./agent/prompts/jsons/${instruction}.json
     test_config_base_dir=config_files/test_webarena
 
@@ -103,7 +106,7 @@ for max_obs_length in ${observation_lens[@]}; do
     mkdir -p $result_dir
 
     # remove html files from result_dir, or else will think tasks are complete
-    rm -f $result_dir/*.html
+    # rm -f $result_dir/*.html
 
     # End to end eval on sample jsons
     python3 run.py \
@@ -141,4 +144,4 @@ for max_obs_length in ${observation_lens[@]}; do
         --test_config_base_dir $test_config_base_dir \
         --flash_attn $flash_attn \
         --fuzzy_match_provider $fuzzy_match_provider
-done
+# done

@@ -46,7 +46,7 @@ def pil_to_google(img: Image.Image) -> Image.Image:
         temp.seek(0)
         png_img = Image.open(temp.name)
     os.remove(temp.name)  # Clean up the temporary file
-    return png_img, None
+    return png_img
 
 
 class AccessibilityTreeNode(TypedDict):

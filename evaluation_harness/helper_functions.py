@@ -642,10 +642,10 @@ def llm_fuzzy_match(pred: str, reference: str, question: str, provider:str='open
             'task_id': None,
         }
         try:
-            response = generate_from_google_completion_noretry(**gen_kwargs).lower()
+            response = generate_from_google_completion_noretry(messages, **gen_kwargs).lower()
         except ResourceExhausted as e:
             gen_kwargs['model'] = 'models/gemini-1.0-pro-latest'
-            response = generate_from_google_completion_noretry(**gen_kwargs).lower()
+            response = generate_from_google_completion_noretry(messages, **gen_kwargs).lower()
 
     elif provider=='huggingface':
         messages = [

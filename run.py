@@ -771,14 +771,14 @@ def define_captioning_fn(args):
 
     # Define captioning function
     caption_image_fn = eval_caption_image_fn = None
+    device = args.eval_captioning_model_device
+    dtype = torch.float32 if args.eval_captioning_model_device=='cpu' else torch.float16
 
     if args.captioning_model is not None:
         if args.observation_type in [
             "accessibility_tree_with_captioner",
             "image_som",
         ]:
-            device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
             caption_image_fn = image_utils.get_captioning_fn(device, dtype, args.captioning_model)
         else:
             caption_image_fn = None
@@ -806,27 +806,30 @@ if __name__ == "__main__":
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
         args = config()
         args.sleep_after_execution = 2.5
+        args.eval_captioning_model=args.captioning_model
+        args.eval_captioning_model_device='cpu'
         prepare(args)
 
+
         ## FIXME @debug interactive
-        # os.environ['GOOGLE_API_KEY'] = 'AIzaSyCmqYPObitVV81ARC7_tofzArttNt63Y84'    
+        # os.environ['GOOGLE_API_KEY'] = 'AIzaSyCJsBUD3rRONfPqUjrbLDW4Gx2__IyopU4'    
         # # args.model='llama-3/8b-instruct'; args.provider='huggingface'
-        # args.model="gemini-pro-1.0"; args.provider="google"
+        # args.model="gemini-pro-1.0-vision"; args.provider="google"
         # args.test_start_idx=0
         # args.test_end_idx=26
         # args.model_endpoint='http://127.0.0.1:8080'
         # args.render=False
         # args.slow_mo=0 if not args.render else 100
-        # args.mode='chat'
-        # args.instruction_path='./agent/prompts/jsons/p_cot_id_actree_3s.json'
+        # args.mode='completion'
+        # args.instruction_path='./agent/prompts/jsons/p_multimodal_cot_id_actree_3s.json'
         # args.result_dir='results/debug'
-        # args.sys_prompt=True
+        # args.sys_prompt=False
+        # args.vlm=True
         # args.local=False
-        # args.vllm=False
         # args.warmup=0
         # args.swap_tasks=True
         # args.deployment_mode='automodel'
-        ## end of @debug    
+        # end of @debug    
 
         # print full path to result_dir
         print(f"\nResults will be saved in {os.path.abspath(args.result_dir)}\n")

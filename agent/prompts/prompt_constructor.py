@@ -281,7 +281,7 @@ class PromptConstructor(object):
                         [
                             "Images:",
                             "(1) current page screenshot:",
-                            pil_to_google(page_screenshot_img)[0],
+                            pil_to_google(page_screenshot_img),
                         ]
                     )
                     for image_i, image in enumerate(images):
