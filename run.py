@@ -757,6 +757,14 @@ def signal_handler(process, sig, frame):
         print("Process terminated gracefully.")
     sys.exit(0)
 
+def set_seed(seed=0):
+    import random
+    import numpy
+    torch.manual_seed(seed)
+    numpy.random.seed(seed)
+    random.seed(seed)
+    
+
 
 def define_captioning_fn(args):
     #TODO: Put the args.observation parsing in prepare(args) function
@@ -794,13 +802,14 @@ def define_captioning_fn(args):
 
 if __name__ == "__main__":
     try:
+        # set_seed(0)
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
         args = config()
         args.sleep_after_execution = 2.5
         prepare(args)
 
         ## FIXME @debug interactive
-        # os.environ['GOOGLE_API_KEY'] = '<key>'    
+        # os.environ['GOOGLE_API_KEY'] = 'AIzaSyCmqYPObitVV81ARC7_tofzArttNt63Y84'    
         # # args.model='llama-3/8b-instruct'; args.provider='huggingface'
         # args.model="gemini-pro-1.0"; args.provider="google"
         # args.test_start_idx=0

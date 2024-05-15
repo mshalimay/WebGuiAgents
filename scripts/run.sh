@@ -1,5 +1,6 @@
+#!/bin/bash
 # google api key
-export GOOGLE_API_KEY="<key>"
+export GOOGLE_API_KEY="AIzaSyCJsBUD3rRONfPqUjrbLDW4Gx2__IyopU4"
 
 # website urls for testing
 export CLASSIFIEDS="http://ec2-3-131-244-37.us-east-2.compute.amazonaws.com:9980"
@@ -30,27 +31,27 @@ get_flag() {
 #---------------------------------------------
 
 # Models
-model=gemini-pro-1.0-vision; provider=google   
-# model='llama-3/8b-instruct'; provider='huggingface'
+# model=gemini-pro-1.0-vision; provider=google   # gemini-pro-1.0-vision | gemini-pro-1.0
+model='llama-3/8b-instruct'; provider='huggingface'
 # model='llava-llama-3/8b-instruct'; provider='huggingface'
-vlm=$(get_flag 'vlm' true)   # if true, use visual language model / input
+vlm=$(get_flag 'vlm' false)   # if true, use visual language model / input
 
 fuzzy_match_provider='huggingface'
 
 # Prompting
-mode='completion' # 'completion', 'chat'
-instruction='p_cot_id_actree_3s'            # p_cot_id_actree_2s_no_na, p_cot_id_actree_3s, p_multimodal_cot_id_actree_3s
+mode='chat'                                 # 'completion', 'chat'
 sys_prompt=$(get_flag 'sys_prompt' true)    # for GEMINI: if true, adds system prompt hint 
+instruction='p_cot_id_actree_3s'            # p_cot_id_actree_2s_no_na, p_cot_id_actree_3s, p_multimodal_cot_id_actree_3s
 
 # Generation                              
-temperature=0.9                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 llama-3 | 0.6 for others (see VisualWebArena).
-top_p=1.0                                   # Default: 0.9 for GPT | 1.0 Gemini-Pro | 0.9 llama-3 | 0.95 for others (see VisualWebArena).
+temperature=0.6                             # Default: 1.0 for GPT | 0.9 Gemini-pro | 0.6 llama-3 | 0.6 for others (see VisualWebArena).
+top_p=0.9                                   # Default: 0.9 for GPT | 1.0 Gemini-Pro | 0.9 llama-3 | 0.95 for others (see VisualWebArena).
 max_tokens=500                              # Max tokens to generate. Default: 384.
 context_length=0                            # Used in open AI. Default: 0.
 top_k=40                                    # Used in gemini. Default: 0 (uses gemini default). Obs: gemini defaults to None, despite documentation saying default is 40.
 
 # Input size parameters 
-max_obs_length=15360                        # In tokens. # Default: 3840 | 640 for models with small ctx | 15360 chars for Gemini-Pro (100 tokens ~60-80 words)
+max_obs_length=3840                         # In tokens. # Default: 3840 | 640 for models with small ctx | 15360 chars for Gemini-Pro (100 tokens ~60-80 words)
 viewport_width=1280                         # Default: 1280  
 viewport_height=1024                        # Default: 720 for small context window models | 2048 for large context window models
 current_viewport_only=$(get_flag 'current_viewport_only' true)   # Default: true
@@ -74,65 +75,70 @@ parsing_failure_th=3
 repeating_action_failure_th=5
 max_retry=1
 
-#paths
-result_dir=./results/${provider}/${model}_${mode}$(date +%Y%m%d_%H_%M)
-instruction_path=./agent/prompts/jsons/${instruction}.json
-test_config_base_dir=config_files/test_webarena
-
 # rendering parameters
 render_screenshot=$(get_flag 'render_screenshot' true)
 save_trace_enabled=$(get_flag 'save_trace_enabled' false)
 render=$(get_flag 'render' false)                           # shows the browser window
 [ "$render" = '--render' ] && slow_mo=100 || slow_mo=0      # slow_mo=100 if rendering the browser
 
-#------------------------------------------------------------------------------
-# End to End evaluation
-#-----------------------------------------------------------------------------
-# Autologin cookies (needs to run only one time)
-if [ ! -d .auth ]; then
-    echo "Creating autologin cookies"
-    ./prepare.sh
-fi
 
-# make results directory if it doesn't exist
-mkdir -p $result_dir
+temperatures=(0.6 0.9 0.5)
+for max_obs_length in ${observation_lens[@]}; do
+    #paths
+    result_dir=./results/${provider}/${model}-${mode}/$(date +%Y%m%d_%H_%M)
+    instruction_path=./agent/prompts/jsons/${instruction}.json
+    test_config_base_dir=config_files/test_webarena
 
-# remove html files from result_dir, or else will think tasks are complete
-rm -f $result_dir/*.html
+    #------------------------------------------------------------------------------
+    # End to End evaluation
+    #-----------------------------------------------------------------------------
 
-# end to end eval on sample jsons
-python3 run.py \
-    --instruction_path $instruction_path\
-    --result_dir $result_dir \
-    --test_start_idx $test_start_idx \
-    --test_end_idx $test_end_idx \
-    --provider $provider \
-    --model $model \
-    $vlm \
-    --mode $mode \
-    --slow_mo $slow_mo \
-    --temperature $temperature \
-    --top_p $top_p \
-    --max_tokens $max_tokens \
-    --context_length $context_length \
-    --max_retry $max_retry \
-    --max_obs_length $max_obs_length \
-    --model_endpoint $model_endpoint \
-    --viewport_width $viewport_width \
-    --viewport_height $viewport_height \
-    --max_steps $max_steps \
-    --parsing_failure_th $parsing_failure_th \
-    --repeating_action_failure_th $repeating_action_failure_th \
-    --deployment_mode $deployment_mode \
-    $swap_tasks \
-    $render \
-    $render_screenshot \
-    $save_trace_enabled \
-    $current_viewport_only \
-    $sys_prompt \
-    $local \
-    $eager \
-    --max_model_len $max_model_len \
-    --test_config_base_dir $test_config_base_dir \
-    --flash_attn $flash_attn \
-    --fuzzy_match_provider $fuzzy_match_provider \
+    # Autologin cookies (needs to run only one time)
+    if [ ! -d .auth ]; then
+        echo "Creating autologin cookies"
+        ./scripts/prepare.sh
+    fi
+
+    # make results directory if it doesn't exist
+    mkdir -p $result_dir
+
+    # remove html files from result_dir, or else will think tasks are complete
+    rm -f $result_dir/*.html
+
+    # End to end eval on sample jsons
+    python3 run.py \
+        --instruction_path $instruction_path\
+        --result_dir $result_dir \
+        --test_start_idx $test_start_idx \
+        --test_end_idx $test_end_idx \
+        --provider $provider \
+        --model $model \
+        $vlm \
+        --mode $mode \
+        --slow_mo $slow_mo \
+        --temperature $temperature \
+        --top_p $top_p \
+        --max_tokens $max_tokens \
+        --context_length $context_length \
+        --max_retry $max_retry \
+        --max_obs_length $max_obs_length \
+        --model_endpoint $model_endpoint \
+        --viewport_width $viewport_width \
+        --viewport_height $viewport_height \
+        --max_steps $max_steps \
+        --parsing_failure_th $parsing_failure_th \
+        --repeating_action_failure_th $repeating_action_failure_th \
+        --deployment_mode $deployment_mode \
+        $swap_tasks \
+        $render \
+        $render_screenshot \
+        $save_trace_enabled \
+        $current_viewport_only \
+        $sys_prompt \
+        $local \
+        $eager \
+        --max_model_len $max_model_len \
+        --test_config_base_dir $test_config_base_dir \
+        --flash_attn $flash_attn \
+        --fuzzy_match_provider $fuzzy_match_provider
+done

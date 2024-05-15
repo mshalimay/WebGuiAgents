@@ -118,6 +118,7 @@ def generate_from_google_completion(
             generation_config=gen_config,
         )
     answer = response.text
+    print(answer)
 
     # Save conversation to file
     if task_id is not None:
