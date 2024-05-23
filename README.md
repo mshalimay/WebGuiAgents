@@ -3,8 +3,8 @@ This repo is heavily based on [WebArena](https://github.com/web-arena-x/webarena
 
 # Setup Steps
 ```bash
-python -m venv venv
-source venv/bin/activate
+python -m venv webguiagents
+source webguiagents/bin/activate
 pip install -r requirements.txt
 playwright install
 pip install -e 
@@ -12,9 +12,9 @@ pip install -q -U google-generativeai
 ```
 
 See [here](https://ai.google.dev/gemini-api/docs/get-started/python
-) for more details on setting Google API installation key.
+) for more details on setting Google API key.
 
-If want to use Intel's `llava-llama-3` model, needs to run `prepare_llava_intel.py` to combine the weights of `llava` and Meta's `llama-3`. 
+If want to use Intel's `llava-llama-3` model, first run `prepare_llava_intel.py` to combine the weights of `llava` and Meta's `llama-3`. 
 - Obs: This requires holding both models in RAM with FP16 precision, so if the process gets killed it might be because your are running out of RAM.
 
 
